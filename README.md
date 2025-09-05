@@ -1,4 +1,4 @@
-# lavai-gui
+# lavai-ui
 
 A graphical user interface for managing AI provider credentials stored by the [lavai](https://github.com/Heron4gf/lavai) library.
 
@@ -16,7 +16,7 @@ A graphical user interface for managing AI provider credentials stored by the [l
 After installation, you can launch the GUI application from the command line:
 
 ```bash
-pip install lavai-gui
+pip install lavai-ui
 lavai-gui start
 ```
 
@@ -32,7 +32,3 @@ lavai-gui start
 
 - Python 3.6+
 - [lavai](https://github.com/Heron4gf/lavai) library
-
-## License
-
-MIT
