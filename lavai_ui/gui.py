@@ -12,34 +12,17 @@ class LavaiGUI:
         self.root.geometry("500x400")
         self.root.minsize(400, 300)
         
-        self.credentials_file = os.path.expanduser("~/.lavai/credentials.json")
         self.client_list = []
         self.client_listbox = None
         
         self.setup_ui()
-        self.load_clients()
-
-    def load_clients(self):
-        """Load client names from lavai credentials."""
-        try:
-            if os.path.exists(self.credentials_file):
-                with open(self.credentials_file, 'r') as f:
-                    credentials = json.load(f)
-                self.client_list = list(credentials.keys())
-            else:
-                self.client_list = []
-        except Exception as e:
-            messagebox.showerror("Error", f"Error loading clients: {str(e)}")
-            self.client_list = []
-        
-        # Update the listbox
         self.update_client_listbox()
 
     def update_client_listbox(self):
         """Update the client listbox with current clients."""
         if self.client_listbox:
             self.client_listbox.delete(0, tk.END)
-            for client in self.client_list:
+            for client in lavai.list_clients():
                 self.client_listbox.insert(tk.END, client)
 
     def save_client(self, client_name, api_key):
@@ -59,19 +42,7 @@ class LavaiGUI:
         except Exception as e:
             messagebox.showerror("Error", f"Error removing client: {str(e)}")
             return False
-
-    def get_client_api_key(self, client_name):
-        """Get API key for a client (for edit functionality)."""
-        try:
-            if os.path.exists(self.credentials_file):
-                with open(self.credentials_file, 'r') as f:
-                    credentials = json.load(f)
-                return credentials.get(client_name, {}).get('api_key', '')
-            return ''
-        except Exception as e:
-            messagebox.showerror("Error", f"Error retrieving client API key: {str(e)}")
-            return ''
-
+        
     def setup_ui(self):
         """Set up the main user interface."""
         # Main frame
@@ -109,13 +80,11 @@ class LavaiGUI:
         # Buttons
         add_button = ttk.Button(button_frame, text="Add", command=self.handle_add)
         remove_button = ttk.Button(button_frame, text="Remove", command=self.handle_remove)
-        edit_button = ttk.Button(button_frame, text="Edit", command=self.handle_edit)
-        refresh_button = ttk.Button(button_frame, text="Refresh", command=self.load_clients)
+        refresh_button = ttk.Button(button_frame, text="Refresh", command=self.update_client_listbox)
         exit_button = ttk.Button(button_frame, text="Exit", command=self.root.destroy)
         
         add_button.pack(side=tk.LEFT, padx=(0, 5))
         remove_button.pack(side=tk.LEFT, padx=(0, 5))
-        edit_button.pack(side=tk.LEFT, padx=(0, 5))
         refresh_button.pack(side=tk.LEFT, padx=(0, 5))
         exit_button.pack(side=tk.LEFT)
 
@@ -164,7 +133,7 @@ class LavaiGUI:
             if self.save_client(client_name, api_key):
                 messagebox.showinfo("Success", "Client added successfully!")
                 add_dialog.destroy()
-                self.load_clients()
+                self.update_client_listbox()
             else:
                 messagebox.showerror("Error", "Failed to add client.")
         
@@ -191,77 +160,10 @@ class LavaiGUI:
         if confirm:
             if self.remove_client(client_name):
                 messagebox.showinfo("Success", "Client removed successfully!")
-                self.load_clients()
+                self.update_client_listbox()
             else:
                 messagebox.showerror("Error", "Failed to remove client.")
 
-    def handle_edit(self):
-        """Handle the edit client functionality."""
-        selection = self.client_listbox.curselection()
-        if not selection:
-            messagebox.showwarning("Warning", "Please select a client to edit.")
-            return
-        
-        client_name = self.client_listbox.get(selection[0])
-        current_api_key = self.get_client_api_key(client_name)
-        
-        # Create edit dialog
-        edit_dialog = tk.Toplevel(self.root)
-        edit_dialog.title("Edit Client")
-        edit_dialog.geometry("400x150")
-        edit_dialog.transient(self.root)
-        edit_dialog.grab_set()
-        
-        # Center the dialog
-        edit_dialog.geometry("+%d+%d" % (self.root.winfo_rootx() + 50, self.root.winfo_rooty() + 50))
-        
-        # Variables
-        api_key_var = tk.StringVar(value=current_api_key)
-        
-        # Layout
-        main_frame = ttk.Frame(edit_dialog, padding="10")
-        main_frame.pack(fill=tk.BOTH, expand=True)
-        
-        # Client name (read-only)
-        ttk.Label(main_frame, text="Client Name:").grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
-        client_name_entry = ttk.Entry(main_frame, width=30)
-        client_name_entry.insert(0, client_name)
-        client_name_entry.configure(state="readonly")
-        client_name_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), pady=(0, 5))
-        
-        # API key
-        ttk.Label(main_frame, text="API Key:").grid(row=1, column=0, sticky=tk.W, pady=(0, 10))
-        api_key_entry = ttk.Entry(main_frame, textvariable=api_key_var, width=30, show="*")
-        api_key_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), pady=(0, 10))
-        
-        # Buttons
-        button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=2, column=0, columnspan=2, pady=(0, 5))
-        
-        def save_client():
-            new_api_key = api_key_var.get().strip()
-            
-            if not new_api_key:
-                messagebox.showwarning("Warning", "Please enter an API Key.")
-                return
-            
-            # For editing, we're just updating the API key of an existing client
-            if self.save_client(client_name, new_api_key):
-                messagebox.showinfo("Success", "Client updated successfully!")
-                edit_dialog.destroy()
-                self.load_clients()
-            else:
-                messagebox.showerror("Error", "Failed to update client.")
-        
-        save_button = ttk.Button(button_frame, text="Save", command=save_client)
-        cancel_button = ttk.Button(button_frame, text="Cancel", command=edit_dialog.destroy)
-        
-        save_button.pack(side=tk.LEFT, padx=(0, 5))
-        cancel_button.pack(side=tk.LEFT)
-        
-        # Configure grid weights
-        main_frame.columnconfigure(1, weight=1)
-        edit_dialog.columnconfigure(0, weight=1)
 
     def run(self):
         """Run the main GUI application."""
